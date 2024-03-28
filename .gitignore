@@ -4,3 +4,5 @@ gitignore/*
 *.png
 *.jpeg
 .staging/*
+.idea/*
+goestimate
