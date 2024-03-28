@@ -82,6 +82,7 @@ are the most useful for estimation.
 
 ## Future
 
+- Support external JSON references (ex: `"$ref": "file://"` or `"$ref": "https://"`)
 - Better docs
 - Support critical path calculation based on pNN (current: p50 only)
 - Support YAML workflow definition
