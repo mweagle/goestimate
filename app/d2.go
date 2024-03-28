@@ -38,10 +38,7 @@ type D2Connection struct {
 	criticalPath bool
 }
 
-// /////////////////////////////////////////////////////////////////////////////
-// D2EncodingVisitor
-//
-// The stateful visitor that properly serializes nested graphs and caches
+// D2EncodingVisitor is a stateful visitor that properly serializes nested graphs and caches
 // D2Connections during traversal
 //
 // /////////////////////////////////////////////////////////////////////////////
@@ -83,7 +80,7 @@ func (d2enc *D2EncodingVisitor) createConnection(fromNode D2Encoder, toNode D2En
 	connectionCost := float64(0)
 	flowGraphSrcNode, flowGraphSrcNodeOk := fromNode.(*flowGraphNode)
 	if flowGraphSrcNodeOk && nil != flowGraphSrcNode {
-		connectionCost = float64(flowGraphSrcNode.generator.GenerationResults().GeneratorStats.Mean)
+		connectionCost = flowGraphSrcNode.generator.GenerationResults().GeneratorStats.Mean
 	}
 	criticalPathEdge := d2enc.criticalPathGraph.HasEdgeBetween(fromNode.ID(), toNode.ID())
 	fromPath := d2enc.fullConnectionPathForNode(fromNode)
@@ -132,10 +129,11 @@ func (d2enc *D2EncodingVisitor) recursiveEncode(output io.StringWriter,
 	fromNode D2Encoder,
 	outputJoinNode D2Encoder) error {
 
+	var writeErr error
 	subgraphDepth := func() int {
-		return (len(fromNode.AbsoluteNodePath()))
+		return len(fromNode.AbsoluteNodePath())
 	}
-	autoindent := func() string {
+	autoIndent := func() string {
 		return strings.Repeat("\t", subgraphDepth())
 	}
 
@@ -148,7 +146,7 @@ func (d2enc *D2EncodingVisitor) recursiveEncode(output io.StringWriter,
 	}
 
 	// Get successors
-	// Split them into subgraphs that need stack management and plain children
+	// Split them into sub-graphs that need stack management and plain children
 	subgraphNodes := make([]*flowGraphPassThroughNode, 0)
 	atomicSuccessorNodes := make([]D2Encoder, 0)
 
@@ -172,7 +170,7 @@ func (d2enc *D2EncodingVisitor) recursiveEncode(output io.StringWriter,
 		"ID", fromNode.ID(),
 		"type", fmt.Sprintf("%T", fromNode))
 
-	// Subgraphs are denoted by a passthrough node. They logically close with a
+	// Sub-graphs are denoted by a pass through node. They logically close with a
 	// join node. That join node is connected to the incoming join
 	for i := 0; i != len(subgraphNodes); i++ {
 		subgraphNode := subgraphNodes[i]
@@ -184,15 +182,18 @@ func (d2enc *D2EncodingVisitor) recursiveEncode(output io.StringWriter,
 		d2enc.createConnection(subgraphJoinNode, outputJoinNode)
 
 		if subgraphDepth() > 0 {
-			output.WriteString(fmt.Sprintf(`%s%d: %s {
+			_, writeErr = output.WriteString(fmt.Sprintf(`%s%d: %s {
 				style: {
 					border-radius: 20
 				}
 	`,
-				autoindent(),
+				autoIndent(),
 				subgraphNode.ID(),
 				subgraphNode.name))
 
+			if writeErr != nil {
+				return writeErr
+			}
 		} else {
 			// Just write out the node at existing depth
 			encodeErr := d2enc.encodeNode(output, subgraphNode)
@@ -210,7 +211,10 @@ func (d2enc *D2EncodingVisitor) recursiveEncode(output io.StringWriter,
 		}
 		// Close out the subgraph if we're not writing the virtual top level subgraph
 		if subgraphDepth() > 0 {
-			output.WriteString(fmt.Sprintf("%s}\n", autoindent()))
+			_, writeErr := output.WriteString(fmt.Sprintf("%s}\n", autoIndent()))
+			if writeErr != nil {
+				return writeErr
+			}
 		}
 	}
 	encError := d2enc.encodeDirectChildren(output, fromNode, atomicSuccessorNodes, outputJoinNode)
@@ -223,25 +227,29 @@ func (d2enc *D2EncodingVisitor) Encode(graph *flowGraph, histogramPath string, o
 	d2enc.owningGraph = graph
 	d2enc.criticalPathGraph = graph.criticalPathGraph
 	d2enc.log = log
-	d2enc.visited = make(map[int64]int, 0)
+	d2enc.visited = make(map[int64]int)
 	d2enc.connectionsList = make([]*D2Connection, 0)
 
 	// Output the primary join node...
-	output.WriteString(`
+	_, writeErr := output.WriteString(`
 # Nodes
 # ------------------------------------------------------------------------------
 
 `)
+	if writeErr != nil {
+		return writeErr
+	}
 	// Start at the start node, which is the virtual root that has the
 	// run parameters
 	encodeErr := graph.startNode.encodeD2Markdown(output, log)
 	if encodeErr != nil {
+
 		return nil
 	}
 
 	// Then write out the histogram node and add a link to the output join node
 	histogramNodeName := "histogram_summary"
-	output.WriteString(fmt.Sprintf(`%s: Estimated Completion {
+	_, writeErr = output.WriteString(fmt.Sprintf(`%s: Estimated Completion {
 shape: image
 icon: %s
 width: 768
@@ -250,7 +258,9 @@ height: 768
 `,
 		histogramNodeName,
 		histogramPath))
-
+	if writeErr != nil {
+		return writeErr
+	}
 	d2enc.connectionsList = append(d2enc.connectionsList, &D2Connection{
 		from:         fmt.Sprintf("%d", graph.outputJoinNode.ID()),
 		to:           histogramNodeName,
@@ -274,11 +284,14 @@ height: 768
 			return nil
 		}
 	}
-	output.WriteString(`
+	_, writeErr = output.WriteString(`
 
 # Connections
 # ------------------------------------------------------------------------------
 `)
+	if writeErr != nil {
+		return writeErr
+	}
 	for i := 0; i != len(d2enc.connectionsList); i++ {
 		connection := d2enc.connectionsList[i]
 		costSuffix := ""
@@ -295,7 +308,10 @@ height: 768
 		}
 	}`
 		}
-		output.WriteString(fmt.Sprintf("%s -> %s%s%s\n", connection.from, connection.to, costSuffix, styleSuffix))
+		_, writeErr := output.WriteString(fmt.Sprintf("%s -> %s%s%s\n", connection.from, connection.to, costSuffix, styleSuffix))
+		if writeErr != nil {
+			return writeErr
+		}
 	}
 	return nil
 }
