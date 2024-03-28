@@ -6,11 +6,15 @@ import (
 	gonumstat "gonum.org/v1/gonum/stat"
 )
 
+type PercentilePair struct {
+	P   float64
+	Val float64
+}
 type AggregatedStatistics struct {
 	Mean        float64
 	Median      float64
 	StdDev      float64
-	Percentiles []float64
+	Percentiles []*PercentilePair
 }
 
 func StatsForSequence(unsortedSamples []float64, percentiles []float64) *AggregatedStatistics {
@@ -25,7 +29,7 @@ func StatsForSequence(unsortedSamples []float64, percentiles []float64) *Aggrega
 		Mean:        mean,
 		Median:      median,
 		StdDev:      stddev,
-		Percentiles: make([]float64, len(percentiles)),
+		Percentiles: make([]*PercentilePair, len(percentiles)),
 	}
 
 	for eachPercentileIndex := range percentiles {
@@ -33,10 +37,14 @@ func StatsForSequence(unsortedSamples []float64, percentiles []float64) *Aggrega
 		if percentileValue > 1.00 {
 			percentileValue = percentileValue / 100
 		}
-		aggStats.Percentiles[eachPercentileIndex] = gonumstat.Quantile(percentileValue,
+		quantValue := gonumstat.Quantile(percentileValue,
 			gonumstat.Empirical,
 			sortedSamples,
 			nil)
+		aggStats.Percentiles[eachPercentileIndex] = &PercentilePair{
+			P:   percentileValue,
+			Val: quantValue,
+		}
 	}
 	return aggStats
 }

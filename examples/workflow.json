@@ -3,6 +3,7 @@
     "schema" : 1,
     "runCount": 10000,
     "workdays": true,
+    "percentiles" :[80, 99],
     "activities": {
         "tasks": [
             {

@@ -59,6 +59,28 @@ func workdayWithOffset(offset float64) time.Time {
 	return businessCalendar.WorkdaysFrom(nowTime, int(math.Ceil(offset)))
 }
 
+func aggregatedStatsFormatter(aggStats *stats.AggregatedStatistics) string {
+	label := fmt.Sprintf("μ=%.2f, σ=%.2f", aggStats.Mean, aggStats.StdDev)
+	if len(aggStats.Percentiles) != 0 {
+		value := ""
+		for i := 0; i != len(aggStats.Percentiles); i++ {
+			percentilePair := aggStats.Percentiles[i]
+			pVal := percentilePair.P
+			if pVal < 1 {
+				pVal *= 100
+			}
+			if math.Floor(pVal) == pVal {
+				value += fmt.Sprintf("p%.0f=%.2f, ", pVal, percentilePair.Val)
+			} else {
+				value += fmt.Sprintf("p%.2f=%.2f, ", pVal, percentilePair.Val)
+			}
+		}
+		value = strings.TrimSuffix(value, ", ")
+		label = fmt.Sprintf("%s (%s)", label, value)
+	}
+	return label
+}
+
 // /////////////////////////////////////////////////////////////////////////////
 //
 // TYPES
@@ -137,7 +159,7 @@ func (fgn *flowGraphNode) encodeD2MarkdownNode(heading string,
 	output.WriteString(fmt.Sprintf("%d : |md\n", fgn.ID()))
 	output.WriteString(fmt.Sprintf("# %s\n", heading))
 	for eachKey, eachVal := range params {
-		output.WriteString(fmt.Sprintf("- _%s_: %v\n", eachKey, eachVal))
+		output.WriteString(fmt.Sprintf("- **%s**: %v\n", eachKey, eachVal))
 	}
 	output.WriteString("|\n")
 	output.WriteString("\n")
@@ -197,17 +219,15 @@ func (fgn *flowGraphNode) D2Params(log *slog.Logger) (*D2Encoding, error) {
 		Name:   fgn.name,
 		Params: []*d2TableParams{},
 	}
-	statsFormatter := func(aggStats *stats.AggregatedStatistics) string {
-		return fmt.Sprintf("μ=%.2f, σ=%.2f", aggStats.Mean, aggStats.StdDev)
-	}
+
 	if fgn.generator != nil {
 
 		genResults := fgn.generator.GenerationResults()
-		incrementalValue := statsFormatter(genResults.GeneratorStats)
+		incrementalValue := aggregatedStatsFormatter(genResults.GeneratorStats)
 
 		encoding.Params = append(encoding.Params,
 			&d2TableParams{
-				Key:   "Name",
+				Key:   "Type",
 				Value: fgn.generator.Name(),
 			},
 			&d2TableParams{
@@ -218,9 +238,10 @@ func (fgn *flowGraphNode) D2Params(log *slog.Logger) (*D2Encoding, error) {
 		if genResults.CumulativeStats != nil {
 			encoding.Params = append(encoding.Params, &d2TableParams{
 				Key:   "∑",
-				Value: statsFormatter(genResults.CumulativeStats),
+				Value: aggregatedStatsFormatter(genResults.CumulativeStats),
 			})
 		}
+
 		if fgn.aggregationOptions != nil && fgn.aggregationOptions.workdays {
 			encoding.Params = append(encoding.Params, &d2TableParams{
 				Key:   "ECD",
@@ -273,9 +294,7 @@ func (fgj *flowGraphJoinMaxValueNode) D2Encode(output io.StringWriter,
 	indent string,
 	log *slog.Logger) error {
 	genStats := fgj.generator.GenerationResults()
-	cumulativeValue := fmt.Sprintf("`μ` = %.2f, `σ` = %.2f",
-		genStats.CumulativeStats.Mean,
-		genStats.CumulativeStats.StdDev)
+	cumulativeValue := aggregatedStatsFormatter(genStats.CumulativeStats)
 
 	markdownParams := map[string]interface{}{
 		"Cumulative": cumulativeValue,
@@ -532,6 +551,7 @@ func newFlowSubgraph(name string, parentSubgraph *flowSubgraph) *flowSubgraph {
 // /////////////////////////////////////////////////////////////////////////////
 type flowGraph struct {
 	name              string
+	percentiles       []float64
 	startNode         *flowGraphStartNode
 	criticalPathGraph *simple.DirectedGraph
 	generatorResults  map[int64]*generator.GenerationResults
@@ -693,7 +713,25 @@ func (fg *flowGraph) Unmarshal(inputStream io.Reader, log *slog.Logger) error {
 	}
 	fg.name = goejson.String("name", rootMap)
 	fg.startNode.runCount = goejson.Uint("runCount", rootMap)
-
+	// Percentiles?
+	fg.percentiles = []float64{50, 95}
+	userPercentiles, userPercentilesExists := rootMap["percentiles"]
+	if userPercentilesExists {
+		switch typedVal := userPercentiles.(type) {
+		case []interface{}:
+			floatVals := []float64{}
+			for i := 0; i != len(typedVal); i++ {
+				castFloat, castFloatOK := typedVal[i].(float64)
+				if !castFloatOK {
+					return fmt.Errorf("invalid percentile specified: %v. Only arrays of float64 are supported", typedVal[i])
+				}
+				floatVals = append(floatVals, castFloat)
+			}
+			fg.percentiles = floatVals
+		default:
+			return fmt.Errorf("invalid percentiles specified: %v. Only arrays of float64 are supported", typedVal)
+		}
+	}
 	// Setup the aggregation options
 	fg.flowSubgraph.aggregationOptions = &AggregationOptions{}
 	fg.flowSubgraph.aggregationOptions.workdays = goejson.Boolean("workdays", rootMap)
@@ -707,7 +745,7 @@ func (fg *flowGraph) Evaluate(histogramPath string, log *slog.Logger) error {
 	}
 
 	// Topo sort, then evaluate all the nodes.
-	percentiles := []float64{50, 95}
+	percentiles := fg.percentiles
 	randSrc := rand.NewSource(0)
 	for _, val := range sortedNodes {
 		switch typedVal := val.(type) {

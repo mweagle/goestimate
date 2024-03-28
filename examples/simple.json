@@ -1,6 +1,7 @@
 {
     "name": "My Project",
     "runCount": 10000,
+    "percentiles" :[95, 99],
     "activities": {
         "tasks": [
             {

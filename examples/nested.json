@@ -1,6 +1,7 @@
 {
     "name": "Sample Project",
     "runCount": 10000,
+    "percentiles" :[50, 99],
     "activities": {
         "subgraph: ": {
             "name": "DEPTH 1",
