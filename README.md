@@ -66,6 +66,11 @@ the following inferences:
 - Key values that scope arrays are assumed to define serial tasks
 - Key values that define objects are assumed to be parallel operations unless they include `name` and `activities` keys, in which case they are treated as subgraphs. Subgraphs are output as nested [D2 Containers](https://d2lang.com/tour/containers/).
 
+For instance, the [workflow.json](https://raw.githubusercontent.com/mweagle/goestimate/main/examples/workflow.json) 
+definition produces a more complex representation:
+
+![workflow](./examples/workflow.svg)
+
 ## Supported Distributions
 
 [PERT](https://en.wikipedia.org/wiki/PERT_distribution) and [Pareto](https://en.wikipedia.org/wiki/Pareto_distribution) 
