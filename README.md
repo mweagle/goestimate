@@ -6,7 +6,8 @@ Command line tool that:
     - Operations can be arbitrarily nested and both serial and parallel execution is supported. 
 2. Creates a gonum [graph](https://pkg.go.dev/gonum.org/v1/gonum/graph) where nodes represent generator events.
 3. Runs a Monte Carlo simluation of all generators.
-4. Computes the execution's [critical path](https://en.wikipedia.org/wiki/Critical_path_method).
+4. Computes the execution's [critical path](https://en.wikipedia.org/wiki/Critical_path_method) based on each
+    generator's `mean` result. 
 5. Generates a [D2](https://d2lang.com/) representation and SVG image that includes denoting the critical path.
 
 ## Example
@@ -79,9 +80,10 @@ definition produces a more complex representation:
 [PERT](https://en.wikipedia.org/wiki/PERT_distribution) and [Pareto](https://en.wikipedia.org/wiki/Pareto_distribution)
 are the most useful for estimation.
 
-## TODO
+## Future
 
 - Better docs
+- Support critical path calculation based on pNN (current: p50 only)
 - Support YAML workflow definition
 - Espose more D2 formatting options (ex: [sketch mode](https://d2lang.com/tour/sketch/))
 - Support D2 [Composition](https://d2lang.com/tour/composition)
