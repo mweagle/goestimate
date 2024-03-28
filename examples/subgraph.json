@@ -1,0 +1,34 @@
+{
+    "name": "Subgraph",
+    "runCount": 10000,
+    "workdays" : true,
+    "activities": {
+        "subgraph: ": {
+            "name": "Subgraph1",
+            "activities": {
+                "tasks": [
+                    {
+                        "name": "Task11",
+                        "type": "PERT(4,6,12)"
+                    },
+                    {
+                        "name": "Task12",
+                        "type": "PERT(4,6,12)"
+                    },
+                    {
+                        "name": "Task13",
+                        "type": "PERT(4,6,12)"
+                    }
+                ],
+                "parallel": {
+                    "Parallel1": {
+                        "type": "Pareto(4, 3, 20)"
+                    },
+                    "Parallel2": {
+                        "type": "PERT(4, 8, 12)"
+                    }
+                }
+            }
+        }
+    }
+}

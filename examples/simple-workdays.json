@@ -1,0 +1,13 @@
+{
+    "name": "My Project",
+    "runCount": 10000,
+    "workdays" : true,
+    "activities": {
+        "tasks": [
+            {
+                "name": "DesignDoc",
+                "type": "PERT(4,5,8)"
+            }
+        ]
+    }
+}

@@ -1,0 +1,102 @@
+{
+    "name": "Complex Workflow",
+    "schema" : 1,
+    "runCount": 10000,
+    "workdays": true,
+    "activities": {
+        "tasks": [
+            {
+                "name": "Task01",
+                "type": "PERT(2,4,6)"
+            },
+            {
+                "name": "Task02",
+                "type": "PERT(2,4,6)"
+            }
+        ],
+        "other_tasks": {
+            "woot": {
+                "type": "Pareto(4, 3, 20)"
+            }, 
+            "bar": {
+                "type": "PERT(4, 8, 12)"
+            }
+        },
+        "subgraph: ": {
+            "name": "DEPTH 1",
+            "activities": {
+                "tasks": [
+                    {
+                        "name": "Task11",
+                        "type": "PERT(6, 8, 10)"
+                    },
+                    {
+                        "name": "Task12",
+                        "type": "PERT(4, 8, 12)"
+                    },
+                    {
+                        "name": "Task13",
+                        "type": "PERT(4, 8, 12)"
+                    }
+                ],
+                "subgraph: ": {
+                    "name": "DEPTH 2",
+                    "activities": {
+                        "tasks": [
+                            {
+                                "name": "Task21",
+                                "type": "PERT(4, 8, 12)"
+                            },
+                            {
+                                "name": "Task22",
+                                "type": "PERT(4, 8, 12)"
+                            },
+                            {
+                                "name": "Task23",
+                                "type": "PERT(4, 8, 12)"
+                            }
+                        ],
+                        "subgraph: ": {
+                            "name": "DEPTH 3",
+                            "activities": {
+                                "tasks": [
+                                    {
+                                        "name": "Task31",
+                                        "type": "PERT(4, 8, 12)"
+                                    },
+                                    {
+                                        "name": "Task32",
+                                        "type": "PERT(4, 8, 12)"
+                                    },
+                                    {
+                                        "name": "Task33",
+                                        "type": "PERT(4, 8, 12)"
+                                    }
+                                ],
+                                "subgraph: ": {
+                                    "name": "DEPTH 4",
+                                    "activities": {
+                                        "tasks": [
+                                            {
+                                                "name": "Task41",
+                                                "type": "PERT(4, 8, 12)"
+                                            },
+                                            {
+                                                "name": "Task42",
+                                                "type": "PERT(4, 8, 12)"
+                                            },
+                                            {
+                                                "name": "Task43",
+                                                "type": "PERT(4, 8, 12)"
+                                            }
+                                        ]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

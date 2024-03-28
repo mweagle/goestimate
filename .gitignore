@@ -6,3 +6,10 @@ gitignore/*
 .staging/*
 .idea/*
 goestimate
+
+#ignore all intermediate files
+examples/*.*
+#except JSON files
+!examples/*.json
+!examples/*.svg
+!examples/*.png

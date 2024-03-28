@@ -1,0 +1,22 @@
+{
+    "name": "Sample Project",
+    "runCount": 10000,
+    "activities": {
+        "subgraph: ": {
+            "name": "DEPTH 1",
+            "activities": {
+                "subgraph: ": {
+                    "name": "DEPTH 2",
+                    "activities": {
+                        "tasks": [
+                            {
+                                "name": "Task - DEPTH 2",
+                                "type": "PERT(4, 6, 12)"
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+    }
+}
