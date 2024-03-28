@@ -61,10 +61,13 @@ To produce a workday calendar aware completion date, add `workdays:true` key to 
 ## Control Flow
 
 There are no reserved keynames in an _activities_ object. `goestimate` makes
-the following inferences:
+the following assumptions:
 
 - Key values that scope arrays are assumed to define serial tasks
-- Key values that define objects are assumed to be parallel operations unless they include `name` and `activities` keys, in which case they are treated as subgraphs. Subgraphs are output as nested [D2 Containers](https://d2lang.com/tour/containers/).
+- Key values that define objects are assumed to be parallel operations **unless** they
+    include `name` and `activities` keys. In that case they are treated as subgraphs.
+    Subgraphs are output as nested [D2 Containers](https://d2lang.com/tour/containers/)
+    and can be arbitrarily nested.
 
 For instance, the [workflow.json](https://raw.githubusercontent.com/mweagle/goestimate/main/examples/workflow.json)
 definition produces a more complex representation:
@@ -79,6 +82,7 @@ are the most useful for estimation.
 ## TODO
 
 - Better docs
+- Support YAML workflow definition
 - Espose more D2 formatting options (ex: [sketch mode](https://d2lang.com/tour/sketch/))
 - Support D2 [Composition](https://d2lang.com/tour/composition)
 - Update formatting of summary histogram, CDF
