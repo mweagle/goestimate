@@ -97,8 +97,8 @@ type D2Encoding struct {
 	Params []*d2TableParams
 }
 
-// All flow graph nodes satisfy this interface so that we can
-// evaluate them.
+// DurationGeneratorGraphNode is the interface that all flow graph nodes satisfy
+// so that we can evaluate them.
 type DurationGeneratorGraphNode interface {
 	Generate(
 		flowGraph *flowGraph,
@@ -154,15 +154,30 @@ func (fgn *flowGraphNode) encodeD2MarkdownNode(heading string,
 	params map[string]interface{},
 	output io.StringWriter,
 	log *slog.Logger) error {
-
+	var writeErr error
 	log.Debug("Markdown encoding node", "title", heading)
-	output.WriteString(fmt.Sprintf("%d : |md\n", fgn.ID()))
-	output.WriteString(fmt.Sprintf("# %s\n", heading))
-	for eachKey, eachVal := range params {
-		output.WriteString(fmt.Sprintf("- **%s**: %v\n", eachKey, eachVal))
+	_, writeErr = output.WriteString(fmt.Sprintf("%d : |md\n", fgn.ID()))
+	if writeErr != nil {
+		return writeErr
 	}
-	output.WriteString("|\n")
-	output.WriteString("\n")
+	_, writeErr = output.WriteString(fmt.Sprintf("# %s\n", heading))
+	if writeErr != nil {
+		return writeErr
+	}
+	for eachKey, eachVal := range params {
+		_, writeErr = output.WriteString(fmt.Sprintf("- **%s**: %v\n", eachKey, eachVal))
+		if writeErr != nil {
+			return writeErr
+		}
+	}
+	_, writeErr = output.WriteString("|\n")
+	if writeErr != nil {
+		return writeErr
+	}
+	_, writeErr = output.WriteString("\n")
+	if writeErr != nil {
+		return writeErr
+	}
 	return nil
 }
 
@@ -196,7 +211,7 @@ func (fgn *flowGraphNode) DOTID() string {
 }
 
 func (fgn *flowGraphNode) D2Encode(output io.StringWriter, indent string, log *slog.Logger) error {
-
+	var writeErr error
 	encodeParams, encodeParamsErr := fgn.D2Params(log)
 	if encodeParamsErr != nil {
 		return encodeParamsErr
@@ -205,16 +220,28 @@ func (fgn *flowGraphNode) D2Encode(output io.StringWriter, indent string, log *s
 	if len(encodeParams.Params) <= 0 {
 		shape = "cloud"
 	}
-	output.WriteString(fmt.Sprintf("%s%d : %s {\n", indent, fgn.ID(), encodeParams.Name))
-	output.WriteString(fmt.Sprintf("%s\tshape: %s\n", indent, shape))
-	for _, eachParam := range encodeParams.Params {
-		output.WriteString(fmt.Sprintf("%s\t%s: %v\n", indent, eachParam.Key, eachParam.Value))
+	_, writeErr = output.WriteString(fmt.Sprintf("%s%d : %s {\n", indent, fgn.ID(), encodeParams.Name))
+	if writeErr != nil {
+		return writeErr
 	}
-	output.WriteString(fmt.Sprintf("%s}\n", indent))
+	_, writeErr = output.WriteString(fmt.Sprintf("%s\tshape: %s\n", indent, shape))
+	if writeErr != nil {
+		return writeErr
+	}
+	for _, eachParam := range encodeParams.Params {
+		_, writeErr = output.WriteString(fmt.Sprintf("%s\t%s: %v\n", indent, eachParam.Key, eachParam.Value))
+		if writeErr != nil {
+			return writeErr
+		}
+	}
+	_, writeErr = output.WriteString(fmt.Sprintf("%s}\n", indent))
+	if writeErr != nil {
+		return writeErr
+	}
 	return nil
 }
 
-func (fgn *flowGraphNode) D2Params(log *slog.Logger) (*D2Encoding, error) {
+func (fgn *flowGraphNode) D2Params(_ *slog.Logger) (*D2Encoding, error) {
 	encoding := &D2Encoding{
 		Name:   fgn.name,
 		Params: []*d2TableParams{},
@@ -291,7 +318,7 @@ func (fgj *flowGraphJoinMaxValueNode) Generate(flowGraph *flowGraph,
 }
 
 func (fgj *flowGraphJoinMaxValueNode) D2Encode(output io.StringWriter,
-	indent string,
+	_ string,
 	log *slog.Logger) error {
 	genStats := fgj.generator.GenerationResults()
 	cumulativeValue := aggregatedStatsFormatter(genStats.CumulativeStats)
@@ -325,7 +352,7 @@ type flowGraphStartNode struct {
 	flowGraphNode
 }
 
-func (fgsn *flowGraphStartNode) D2Params(log *slog.Logger) (*D2Encoding, error) {
+func (fgsn *flowGraphStartNode) D2Params(_ *slog.Logger) (*D2Encoding, error) {
 	return nil, nil
 }
 
@@ -339,8 +366,8 @@ func (fgsn *flowGraphStartNode) encodeD2Markdown(output io.StringWriter, log *sl
 		log)
 }
 
-func (fgsn *flowGraphStartNode) Generate(flowGraph *flowGraph,
-	percentiles []float64,
+func (fgsn *flowGraphStartNode) Generate(_ *flowGraph,
+	_ []float64,
 	src rand.Source,
 	log *slog.Logger) (*generator.GenerationResults, error) {
 	if fgsn.runCount <= 0 {
@@ -420,14 +447,13 @@ func (fsg *flowSubgraph) Weight(xid, yid int64) (w float64, ok bool) {
 	if fromNode != nil {
 		flowGraphSrcNode, flowGraphSrcNodeOk := fromNode.(*flowGraphNode)
 		if flowGraphSrcNodeOk && nil != flowGraphSrcNode {
-			connectionCost = float64(flowGraphSrcNode.generator.GenerationResults().GeneratorStats.Mean)
+			connectionCost = flowGraphSrcNode.generator.GenerationResults().GeneratorStats.Mean
 		}
 	}
 	return -1 * connectionCost, fsg.HasEdgeBetween(xid, yid)
 }
 
-// Every subgraph knows it's parents' ID. We can push this state into
-// each node as well so that they create it...
+// AddSerialGeneratorNode adds a serial step to the current node
 func (fsg *flowSubgraph) AddSerialGeneratorNode(gen *flowGraphNode) error {
 	// When we add a new node, ensure it's joined to the start
 	// and there is a join to the exit
@@ -560,7 +586,7 @@ type flowGraph struct {
 
 func (fg *flowGraph) PredecessorValues(nodeID int64) (map[int64]*generator.GenerationResults, error) {
 	ancestorNodesIterator := fg.WeightedDirectedGraph.To(nodeID)
-	predecessorMap := make(map[int64]*generator.GenerationResults, 0)
+	predecessorMap := make(map[int64]*generator.GenerationResults)
 	for ancestorNodesIterator.Next() {
 		values, valuesExist := fg.generatorResults[ancestorNodesIterator.Node().ID()]
 		if !valuesExist {
@@ -583,7 +609,7 @@ func (fg *flowGraph) PlotDistribution(histogramPath string, log *slog.Logger) er
 	// Create a histogram of our values drawn
 	// from the standard normal.
 
-	// Caculate the CDF
+	// Calculate the CDF
 	GenerationResults := fg.outputJoinNode.generator.GenerationResults()
 
 	// First bin the data and graph that. We'll bin into 20 bins
@@ -610,7 +636,7 @@ func (fg *flowGraph) PlotDistribution(histogramPath string, log *slog.Logger) er
 		activeBin := hist.Bins[i]
 		cumulativeWeight += activeBin.Weight
 		cdfValues[i].X = activeBin.Max
-		cdfValues[i].Y = float64(cumulativeWeight / float64(len(sortedSamples)))
+		cdfValues[i].Y = cumulativeWeight / float64(len(sortedSamples))
 	}
 
 	line, _ := plotter.NewLine(cdfValues)
@@ -633,9 +659,9 @@ func (fg *flowGraph) recursiveUnmarshal(rootObj map[string]interface{},
 		if !mapDataOk {
 			return nil, fmt.Errorf("failed to type assert generator unmarshaller")
 		}
-		generator, generatorErr := generator.NewDurationGenerator(mapData, log)
-		if generatorErr != nil {
-			return nil, generatorErr
+		durGenerator, durGeneratorErr := generator.NewDurationGenerator(mapData, log)
+		if durGeneratorErr != nil {
+			return nil, durGeneratorErr
 		}
 		nodeName := goejson.String("name", mapData)
 		if len(nodeName) <= 0 {
@@ -644,7 +670,7 @@ func (fg *flowGraph) recursiveUnmarshal(rootObj map[string]interface{},
 		return &flowGraphNode{
 			id:        rand.Int63(),
 			name:      nodeName,
-			generator: generator,
+			generator: durGenerator,
 		}, nil
 	}
 	rootMap, rootMapOk := rootObj["activities"].(map[string]interface{})
@@ -665,7 +691,10 @@ func (fg *flowGraph) recursiveUnmarshal(rootObj map[string]interface{},
 				if nodeErr != nil {
 					return nodeErr
 				}
-				subgraphParent.AddSerialGeneratorNode(node)
+				addErr := subgraphParent.AddSerialGeneratorNode(node)
+				if addErr != nil {
+					return addErr
+				}
 			}
 		case map[string]interface{}:
 			// Is this an activities blob, or a set of parallel tasks?
@@ -719,7 +748,7 @@ func (fg *flowGraph) Unmarshal(inputStream io.Reader, log *slog.Logger) error {
 	if userPercentilesExists {
 		switch typedVal := userPercentiles.(type) {
 		case []interface{}:
-			floatVals := []float64{}
+			floatVals := make([]float64, 0)
 			for i := 0; i != len(typedVal); i++ {
 				castFloat, castFloatOK := typedVal[i].(float64)
 				if !castFloatOK {
@@ -732,7 +761,7 @@ func (fg *flowGraph) Unmarshal(inputStream io.Reader, log *slog.Logger) error {
 			return fmt.Errorf("invalid percentiles specified: %v. Only arrays of float64 are supported", typedVal)
 		}
 	}
-	// Setup the aggregation options
+	// Set up the aggregation options
 	fg.flowSubgraph.aggregationOptions = &AggregationOptions{}
 	fg.flowSubgraph.aggregationOptions.workdays = goejson.Boolean("workdays", rootMap)
 	return fg.recursiveUnmarshal(rootMap, fg.flowSubgraph, log)
@@ -807,9 +836,8 @@ func (fg *flowGraph) Evaluate(histogramPath string, log *slog.Logger) error {
 			}
 		}
 	}
-	// Graph the final distribution...
-	fg.PlotDistribution(histogramPath, log)
-	return nil
+	// Graph the final distribution
+	return fg.PlotDistribution(histogramPath, log)
 }
 
 func newFlowGraph(inputFile io.Reader, log *slog.Logger) (*flowGraph, error) {
@@ -817,7 +845,7 @@ func newFlowGraph(inputFile io.Reader, log *slog.Logger) (*flowGraph, error) {
 	fg := &flowGraph{
 		flowSubgraph:      newFlowSubgraph("input", nil),
 		criticalPathGraph: simple.NewDirectedGraph(),
-		generatorResults:  make(map[int64]*generator.GenerationResults, 0),
+		generatorResults:  make(map[int64]*generator.GenerationResults),
 	}
 	fg.startNode = &flowGraphStartNode{
 		runCount: 0,
@@ -878,11 +906,15 @@ func NewApplicationFlowGraph(params *ApplicationFlowGraphParams, log *slog.Logge
 	}
 	d2File := filepath.Join(params.OutputDirectory, outputFileBaseName+".d2")
 	f, _ := os.Create(d2File)
-	defer f.Close()
+
 	encoder := D2EncodingVisitor{
 		criticalPathGraph: simple.NewDirectedGraph(),
 	}
 	encodeErr := encoder.Encode(appGraph, histogramPath, f, log)
+	closeErr := f.Close()
+	if closeErr != nil {
+		return nil, closeErr
+	}
 	if encodeErr != nil {
 		log.Error("Failed to encode node", "err", encodeErr)
 	}
