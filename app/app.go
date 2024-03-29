@@ -600,19 +600,16 @@ func (fg *flowGraph) PredecessorValues(nodeID int64) (map[int64]*generator.Gener
 func (fg *flowGraph) PlotDistribution(histogramPath string, log *slog.Logger) error {
 	// Make a plot and set its title.
 	p := plot.New()
-	p.X.Label.Text = "End Time"
+	p.X.Label.Text = "Total Duration"
 	p.Y.Label.Text = "Probability"
 	p.Title.Text = "Cumulative Estimate"
 	p.Title.TextStyle.Font.Typeface = font.Typeface("Monoco")
 	p.Title.TextStyle.Color = color.RGBA{B: 255, A: 255}
 
-	// Create a histogram of our values drawn
-	// from the standard normal.
-
 	// Calculate the CDF
 	GenerationResults := fg.outputJoinNode.generator.GenerationResults()
 
-	// First bin the data and graph that. We'll bin into 20 bins
+	// First bin the data and graph that. We'll bin into 100 bins
 	rawHist, rawHistError := plotter.NewHist(plotter.Values(*GenerationResults.CumulativeValues), 100)
 	if rawHistError != nil {
 		return rawHistError
